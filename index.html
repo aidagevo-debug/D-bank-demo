@@ -1,1 +1,135 @@
 
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>D-Bank Poker</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#edf2fa;color:#17253e;font-family:Arial,sans-serif}
+header{background:linear-gradient(130deg,#062b72,#1765cb);color:white;padding:28px 20px}
+h1{margin:0;font-size:32px}
+header p{color:#d6e7ff}
+.balance{background:#ffffff20;border:1px solid #ffffff55;border-radius:18px;padding:22px;margin-top:24px}
+.balance strong{display:block;font-size:36px;margin:15px 0}
+main{padding:16px;max-width:650px;margin:auto}
+.card{background:white;padding:22px;border-radius:20px;margin-bottom:18px;box-shadow:0 3px 12px #10284a0a}
+h2{font-size:21px;margin-top:0}
+label{display:block;margin:16px 0 7px;color:#52647f}
+select,input,button{width:100%;padding:15px;font-size:17px;border-radius:11px}
+select,input{border:1px solid #ccd8e8;background:white}
+button{background:#0955b5;color:white;border:0;font-weight:bold;margin-top:18px}
+button:active{opacity:.7}
+.entry{border-bottom:1px solid #e5eaf2;padding:12px 0;line-height:1.6}
+small{color:#66758e}
+.note{font-size:13px;color:#697994;line-height:1.6}
+</style>
+</head>
+<body>
+<header>
+<h1>▣ D-Bank</h1>
+<p>PRIVATE POKER BANK · NUR SPIELGELD</p>
+<div class="balance">
+Verfügbares Spielguthaben
+<strong id="balance">10.000,00 €</strong>
+<span id="accountName">Spielkonto 1 · DEMO</span>
+</div>
+</header>
+<main>
+<section class="card">
+<h2>Spielkonto auswählen</h2>
+<label>Aktiver Spieler</label>
+<select id="sender"></select>
+<p class="note">10 Demo-Spielkonten. Jeder Spieler startet mit 10.000 Spiel-Euro.</p>
+</section>
+<section class="card">
+<h2>Spielgeld überweisen</h2>
+<label>Empfänger</label>
+<select id="receiver"></select>
+<label>Betrag in Spiel-Euro</label>
+<input id="amount" type="number" value="100" min="0.01" step="0.01">
+<button onclick="transfer()">Spielgeld überweisen</button>
+<p class="note">Nur virtuelles Spielgeld. Keine echten Euro, keine Banküberweisung.</p>
+</section>
+<section class="card">
+<h2>Meine Umsätze</h2>
+<div id="history"></div>
+</section>
+<section class="card">
+<h2>Alle Spielkonten</h2>
+<div id="accounts"></div>
+</section>
+<p class="note">DEMO: Die Daten werden nur in diesem Browser gespeichert. Andere iPhones sind noch nicht verbunden. Keine echten Geldbeträge eingeben.</p>
+</main>
+<script>
+const names=Array.from({length:10},(_,i)=>"Spieler "+(i+1));
+const key="dbank-demo-v1";
+let data;
+try{data=JSON.parse(localStorage.getItem(key))}catch(e){}
+if(!data||!Array.isArray(data.balances)||data.balances.length!==10){
+data={balances:Array(10).fill(1000000),logs:[]};
+}
+const sender=document.getElementById("sender");
+const receiver=document.getElementById("receiver");
+const amount=document.getElementById("amount");
+const euro=n=>(n/100).toLocaleString("de-DE",{style:"currency",currency:"EUR"});
+names.forEach((n,i)=>{
+sender.add(new Option(n,i));
+receiver.add(new Option(n,i));
+});
+receiver.value="1";
+function save(){
+localStorage.setItem(key,JSON.stringify(data));
+}
+function render(){
+let s=Number(sender.value);
+document.getElementById("balance").textContent=euro(data.balances[s]);
+document.getElementById("accountName").textContent=names[s]+" · DEMO";
+document.getElementById("accounts").innerHTML="";
+names.forEach((n,i)=>{
+let d=document.createElement("div");
+d.className="entry";
+d.textContent=n+" — "+euro(data.balances[i]);
+document.getElementById("accounts").appendChild(d);
+});
+let h=document.getElementById("history");
+h.innerHTML="";
+let entries=data.logs.filter(x=>x.from===s||x.to===s);
+if(!entries.length)h.textContent="Noch keine Umsätze.";
+entries.forEach(x=>{
+let d=document.createElement("div");
+d.className="entry";
+let sign=x.to===s?"+":"−";
+d.textContent=names[x.from]+" → "+names[x.to]+" | "+sign+euro(x.amount);
+let date=document.createElement("small");
+date.textContent=" · "+new Date(x.date).toLocaleString("de-DE");
+d.appendChild(date);
+h.appendChild(d);
+});
+}
+function transfer(){
+let s=Number(sender.value),r=Number(receiver.value);
+let a=Number(amount.value);
+let cents=Math.round(a*100);
+if(s===r){alert("Bitte einen anderen Empfänger wählen.");return;}
+if(!Number.isFinite(a)||a<=0||!Number.isSafeInteger(cents)||cents<=0){
+alert("Bitte einen gültigen Betrag eingeben.");return;
+}
+if(cents>data.balances[s]){
+alert("Nicht genügend Spielguthaben.");return;
+}
+if(!confirm(euro(cents)+" Spielgeld an "+names[r]+" senden?"))return;
+data.balances[s]-=cents;
+data.balances[r]+=cents;
+data.logs.unshift({from:s,to:r,amount:cents,date:new Date().toISOString()});
+save();
+render();
+alert("Spielgeld erfolgreich übertragen!");
+}
+sender.onchange=render;
+render();
+</script>
+</body>
+</html>
